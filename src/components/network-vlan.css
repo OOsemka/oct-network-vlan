@@ -1,0 +1,20 @@
+/* Network VLAN tool. Prefix: netvlan- */
+
+.netvlan-lead {
+  max-width: 48rem;
+  color: var(--pf-t--global--text--color--subtle, #6a6e73);
+}
+
+.netvlan-table-wrap {
+  overflow: auto;
+  max-height: 28rem;
+}
+
+.netvlan-review-yaml {
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.netvlan-actions {
+  padding-top: var(--pf-t--global--spacer--md, 16px);
+}
