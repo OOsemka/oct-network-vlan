@@ -82,6 +82,7 @@ import {
 import { toYaml } from '../utils/yaml';
 import dashboardLogger from '../utils/logger';
 import CommunityDisclaimer from './CommunityDisclaimer';
+import NmstateSetup, { useNmstateMissing } from './NmstateSetup';
 
 import './network-vlan.css';
 
@@ -377,7 +378,8 @@ const NetworkVlanPage: FC = () => {
   ]);
 
   /* ---- Loading ---- */
-  const ready = (nnsLoaded || Boolean(nnsError)) && (nadsLoaded || Boolean(nadError)) &&
+  const nmstateMissing = useNmstateMissing();
+  const ready = (nnsLoaded || Boolean(nnsError) || nmstateMissing) && (nadsLoaded || Boolean(nadError)) &&
     (cudnsLoaded || Boolean(cudnError)) && (nsLoaded);
 
   if (!ready) {
@@ -392,18 +394,8 @@ const NetworkVlanPage: FC = () => {
 
   /* ---- Discovery errors ---- */
   const renderDiscoveryError = (): React.ReactNode => {
-    if (nnsError && isMissingCrdError(nnsError)) {
-      return (
-        <EmptyState
-          titleText={t('NMState operator not found — NodeNetworkState is required to discover bridges.')}
-          icon={NetworkIcon}
-          headingLevel="h2"
-        >
-          <EmptyStateBody>
-            {t('Install the Kubernetes NMState operator to discover bridge interfaces on cluster nodes.')}
-          </EmptyStateBody>
-        </EmptyState>
-      );
+    if (nmstateMissing || (nnsError && isMissingCrdError(nnsError))) {
+      return <NmstateSetup missing />;
     }
     if (nnsError && isForbiddenError(nnsError)) {
       return (

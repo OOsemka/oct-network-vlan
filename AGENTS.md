@@ -9,12 +9,14 @@ Do not add Community Tools category nav here. Users open this page from the stor
 | | Value |
 | --- | --- |
 | Plugin ID / ConsolePlugin / `package.json` `consolePlugin.name` | **`oct-network-vlan`** |
-| Image | `quay.io/cjanisze/oct-network-vlan:1.0.0-ocp4.22` (`<semver>-ocp<major.minor>`) |
+| Image | `quay.io/cjanisze/oct-network-vlan:1.1.0-ocp4.22` (`<semver>-ocp<major.minor>`) |
 | i18n | `plugin__oct-network-vlan` |
 
 Display name is **Network VLAN**. No PVC or discovery sidecar.
 
-**Current version:** `1.0.0` (package.json / consolePlugin.version).
+**Current version:** `1.1.0` (package.json / consolePlugin.version).
+
+**NMState:** the page needs the Kubernetes NMState operator. If the `nodenetworkstates.nmstate.io` CRD is missing, it shows a one-click install (`src/components/NmstateSetup.tsx`, `src/utils/nmstate-install.ts`: Subscription `kubernetes-nmstate-operator`, channel `stable`, `redhat-operators`, then the `NMState` instance), or **Finish NMState setup** when the operator is there but no NodeNetworkState is reported. The console SDK reports no error for a watch on a missing CRD, so detection is by the CRD itself.
 
 ## Architecture (short)
 
@@ -63,7 +65,7 @@ Creates a CUDN with `topology: localnet` pointing at a `physicalNetworkName` dis
 Two axes in the catalog: git tag **`v1.x.x`** (semver) and optional branch **`ocp-X.Y`** when PatternFly or APIs diverge. Image tags **always** `<semver>-ocp<major.minor>` (e.g. `1.0.0-ocp4.22`). **Always publish both** OpenShift minor tags.
 
 - Git: `main` tracks the newest supported minor (currently **4.22**).
-- Images: `oct-network-vlan:1.0.0-ocp4.22` and `:1.0.0-ocp4.21`.
+- Images: `oct-network-vlan:1.1.0-ocp4.22` and `:1.1.0-ocp4.21`.
 - PatternFly 6 on 4.22; do not mix PF majors on one branch.
 
 ## Navigation (React Router v6 via v5-compat)

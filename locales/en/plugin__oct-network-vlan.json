@@ -4,8 +4,6 @@
   "Community project. Not officially supported by Red Hat.": "Community project. Not officially supported by Red Hat.",
   "OpenShift Community Tools is unofficial UX enhancements for the OpenShift Console.": "OpenShift Community Tools is unofficial UX enhancements for the OpenShift Console.",
   "Create VLAN networks from discovered Linux bridges or OVN localnets. Generates NetworkAttachmentDefinitions (NADs) for Linux bridges or ClusterUserDefinedNetworks (CUDNs) for OVN localnet topology.": "Create VLAN networks from discovered Linux bridges or OVN localnets. Generates NetworkAttachmentDefinitions (NADs) for Linux bridges or ClusterUserDefinedNetworks (CUDNs) for OVN localnet topology.",
-  "NMState operator not found — NodeNetworkState is required to discover bridges.": "NMState operator not found — NodeNetworkState is required to discover bridges.",
-  "Install the Kubernetes NMState operator to discover bridge interfaces on cluster nodes.": "Install the Kubernetes NMState operator to discover bridge interfaces on cluster nodes.",
   "You do not have permission to list NodeNetworkState resources.": "You do not have permission to list NodeNetworkState resources.",
   "Failed to load NodeNetworkState": "Failed to load NodeNetworkState",
   "Could not list NodeNetworkConfigurationPolicies": "Could not list NodeNetworkConfigurationPolicies",
@@ -65,5 +63,12 @@
   "Creating...": "Creating...",
   "Create": "Create",
   "Create another": "Create another",
-  "Back to Network": "Back to Network"
+  "Back to Network": "Back to Network",
+  "Finish NMState setup": "Finish NMState setup",
+  "Install NMState operator": "Install NMState operator",
+  "NMState has not reported node interfaces yet": "NMState has not reported node interfaces yet",
+  "NMState is installed.": "NMState is installed.",
+  "The NMState operator is not installed": "The NMState operator is not installed",
+  "The operator is installed, but nodes are not reporting their interfaces. Finishing the setup creates the NMState instance if it is missing.": "The operator is installed, but nodes are not reporting their interfaces. Finishing the setup creates the NMState instance if it is missing.",
+  "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click.": "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click."
 }

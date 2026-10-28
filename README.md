@@ -5,8 +5,8 @@
 Standalone OpenShift Console plugin that creates VLAN networks from discovered Linux bridges and OVN localnets. Generates NetworkAttachmentDefinitions (NADs) for Linux bridge VLANs and ClusterUserDefinedNetworks (CUDNs) for OVN localnet VLANs.
 
 - **Plugin ID:** `oct-network-vlan`
-- **Version:** `1.0.0`
-- **Image:** `quay.io/cjanisze/oct-network-vlan:1.0.0-ocp4.22` and `:1.0.0-ocp4.21` (`<semver>-ocp<major.minor>`; always publish both minors)
+- **Version:** `1.1.0`
+- **Image:** `quay.io/cjanisze/oct-network-vlan:1.1.0-ocp4.22` and `:1.1.0-ocp4.21` (`<semver>-ocp<major.minor>`; always publish both minors)
 
 Validated on OpenShift **4.22** (PatternFly 6). Open from **Community Tools → Network** after the storefront (`oct-storefront`) and this plugin are enabled.
 
@@ -32,3 +32,7 @@ Deploy: edit the image in `deploy/install.yaml`, `oc apply -f deploy/install.yam
 ## Contributing — cluster-portable code
 
 Do **not** hardcode environment-specific values (VLAN IDs, CIDRs, bridge names, StorageClasses, hostnames). The UI reads live NMState and NNCPs; the user supplies the VLAN configuration. Agents: `.cursor/rules/oct-no-env-hardcoding.mdc`.
+
+## NMState
+
+The page needs the Kubernetes NMState operator. If it is not installed, the page offers a one-click install from `redhat-operators`.
