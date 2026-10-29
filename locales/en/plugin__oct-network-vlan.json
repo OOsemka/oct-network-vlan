@@ -70,5 +70,6 @@
   "NMState is installed.": "NMState is installed.",
   "The NMState operator is not installed": "The NMState operator is not installed",
   "The operator is installed, but nodes are not reporting their interfaces. Finishing the setup creates the NMState instance if it is missing.": "The operator is installed, but nodes are not reporting their interfaces. Finishing the setup creates the NMState instance if it is missing.",
-  "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click.": "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click."
+  "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click.": "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click.",
+  "The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod.": "The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod."
 }

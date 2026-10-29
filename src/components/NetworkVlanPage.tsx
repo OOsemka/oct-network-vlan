@@ -30,8 +30,6 @@ import {
   Form,
   FormGroup,
   FormHelperText,
-  FormSelect,
-  FormSelectOption,
   HelperText,
   HelperTextItem,
   MenuToggle,
@@ -172,7 +170,8 @@ const NetworkVlanPage: FC = () => {
   const [networkName, setNetworkName] = useState('');
   const [macspoofchk, setMacspoofchk] = useState(false);
   const [mtu, setMtu] = useState(9000);
-  const [role, setRole] = useState('secondary');
+  // Localnet networks are always secondary (the only role the API allows).
+  const role = 'Secondary';
   const [subnetCidr, setSubnetCidr] = useState('');
   const [subnetGateway, setSubnetGateway] = useState('');
   const [nsSelectOpen, setNsSelectOpen] = useState(false);
@@ -247,7 +246,6 @@ const NetworkVlanPage: FC = () => {
           physicalNetworkName: selectedLocalnet,
           vlanID: vlanId || 0,
           mtu: mtu > 0 ? mtu : undefined,
-          role,
           subnets,
         });
         dashboardLogger.info(
@@ -368,7 +366,6 @@ const NetworkVlanPage: FC = () => {
       physicalNetworkName: selectedLocalnet,
       vlanID: vlanId || 0,
       mtu: mtu > 0 ? mtu : undefined,
-      role,
       subnets,
     });
     return toYaml(cudn as unknown as Record<string, unknown>);
@@ -742,17 +739,6 @@ const NetworkVlanPage: FC = () => {
                           </FormHelperText>
                         </FormGroup>
 
-                        <FormGroup label={t('Role')} fieldId="netvlan-role">
-                          <FormSelect
-                            id="netvlan-role"
-                            value={role}
-                            onChange={(_e, value) => setRole(value)}
-                          >
-                            <FormSelectOption value="secondary" label={t('Secondary')} />
-                            <FormSelectOption value="primary" label={t('Primary')} />
-                          </FormSelect>
-                        </FormGroup>
-
                         <FormGroup label={t('Subnet CIDR (optional)')} fieldId="netvlan-subnet-cidr">
                           <TextInput
                             id="netvlan-subnet-cidr"
@@ -769,6 +755,13 @@ const NetworkVlanPage: FC = () => {
                             onChange={(_e, value) => setSubnetGateway(value)}
                             placeholder="10.0.0.1"
                           />
+                          <FormHelperText>
+                            <HelperText>
+                              <HelperTextItem>
+                                {t('The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod.')}
+                              </HelperTextItem>
+                            </HelperText>
+                          </FormHelperText>
                         </FormGroup>
                       </>
                     )}

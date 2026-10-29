@@ -84,15 +84,21 @@ export type NetworkAttachmentDefinitionKind = {
   };
 };
 
+/** spec.network.localnet of a ClusterUserDefinedNetwork (k8s.ovn.org/v1). */
 export type CudnLocalNet = {
   physicalNetworkName?: string;
-  vlanID?: number;
-  mtu?: number;
+  /** Only "Secondary" is allowed for localnet. */
   role?: string;
-  subnets?: Array<{
-    cidr: string;
-    gateway?: string;
-  }>;
+  vlan?: { mode: 'Access'; access: { id: number } };
+  mtu?: number;
+  /** CIDR strings (at most one IPv4 and one IPv6). */
+  subnets?: string[];
+  /** Addresses inside subnets that OVN must not assign (e.g. the gateway). */
+  excludeSubnets?: string[];
+  /** Required as Disabled when there are no subnets. */
+  ipam?: { mode: 'Enabled' | 'Disabled' };
+  /** Fields written by Network VLAN 1.1.1 and earlier (rejected by the API). */
+  vlanID?: number;
 };
 
 export type ClusterUserDefinedNetworkKind = {
@@ -113,6 +119,8 @@ export type ClusterUserDefinedNetworkKind = {
     };
     network?: {
       topology?: string;
+      localnet?: CudnLocalNet;
+      /** Key written by Network VLAN 1.1.1 and earlier. */
       localNet?: CudnLocalNet;
     };
   };
@@ -287,6 +295,23 @@ export function buildLinuxBridgeNad(opts: {
   };
 }
 
+function ipv4ToInt(ip: string): number | undefined {
+  const parts = ip.split('.');
+  if (parts.length !== 4 || parts.some((p) => !/^\d{1,3}$/.test(p) || Number(p) > 255)) return undefined;
+  return parts.reduce((n, p) => n * 256 + Number(p), 0);
+}
+
+/** True when ip is an IPv4 address inside the IPv4 CIDR. */
+export function ipv4InCidr(ip: string, cidr: string): boolean {
+  const [net, bits] = cidr.split('/');
+  const a = ipv4ToInt(ip);
+  const n = ipv4ToInt(net);
+  const prefix = Number(bits);
+  if (a === undefined || n === undefined || !(prefix >= 0 && prefix <= 32)) return false;
+  const size = 2 ** (32 - prefix);
+  return Math.floor(a / size) === Math.floor(n / size);
+}
+
 /**
  * Build a ClusterUserDefinedNetwork for an OVN localnet VLAN.
  */
@@ -296,21 +321,29 @@ export function buildOvnCudn(opts: {
   physicalNetworkName: string;
   vlanID: number;
   mtu?: number;
-  role?: string;
   subnets?: Array<{ cidr: string; gateway?: string }>;
 }): ClusterUserDefinedNetworkKind {
-  const localNet: CudnLocalNet = {
+  const localnet: CudnLocalNet = {
     physicalNetworkName: opts.physicalNetworkName,
-    vlanID: opts.vlanID,
-    role: opts.role || 'secondary',
+    role: 'Secondary',
+    vlan: { mode: 'Access', access: { id: opts.vlanID } },
   };
 
   if (opts.mtu && opts.mtu > 0) {
-    localNet.mtu = opts.mtu;
+    localnet.mtu = opts.mtu;
   }
 
-  if (opts.subnets && opts.subnets.length > 0) {
-    localNet.subnets = opts.subnets.filter((s) => s.cidr);
+  const subnets = (opts.subnets || []).filter((s) => s.cidr.trim());
+  if (subnets.length > 0) {
+    localnet.subnets = subnets.map((s) => s.cidr.trim());
+    // Localnet has no gateway field: the gateway lives on the physical
+    // network. Reserve its address so OVN IPAM never hands it out.
+    const excluded = subnets
+      .filter((s) => s.gateway && ipv4InCidr(s.gateway.trim(), s.cidr.trim()))
+      .map((s) => `${(s.gateway as string).trim()}/32`);
+    if (excluded.length > 0) localnet.excludeSubnets = excluded;
+  } else {
+    localnet.ipam = { mode: 'Disabled' };
   }
 
   return {
@@ -325,8 +358,8 @@ export function buildOvnCudn(opts: {
     spec: {
       namespaceSelector: opts.namespaceSelector,
       network: {
-        topology: 'localnet',
-        localNet,
+        topology: 'Localnet',
+        localnet,
       },
     },
   };
@@ -369,13 +402,13 @@ export function listVlanInventory(
   for (const cudn of cudns) {
     const labels = cudn.metadata.labels || {};
     if (labels['app.kubernetes.io/managed-by'] !== MANAGED_BY_LABEL) continue;
-    const localNet = cudn.spec?.network?.localNet;
+    const localnet = cudn.spec?.network?.localnet || cudn.spec?.network?.localNet;
     items.push({
       name: cudn.metadata.name,
       namespace: '(cluster)',
       type: 'cudn',
-      vlanId: localNet?.vlanID,
-      physicalNetwork: localNet?.physicalNetworkName,
+      vlanId: localnet?.vlan?.access?.id ?? localnet?.vlanID,
+      physicalNetwork: localnet?.physicalNetworkName,
     });
   }
 
