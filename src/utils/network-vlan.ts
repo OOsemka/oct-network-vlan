@@ -392,6 +392,23 @@ function parseCniConfig(config: string | undefined): { bridge?: string; type?: s
 }
 
 /**
+ * Namespaces a CUDN is available in, from its namespaceSelector. The CUDN
+ * itself is cluster-scoped; OVN creates its NAD in each selected namespace.
+ */
+export function cudnNamespaces(cudn: ClusterUserDefinedNetworkKind): string {
+  const sel = cudn.spec?.namespaceSelector;
+  const names: string[] = [];
+  const byName = sel?.matchLabels?.['kubernetes.io/metadata.name'];
+  if (byName) names.push(byName);
+  for (const e of sel?.matchExpressions || []) {
+    if (e.key === 'kubernetes.io/metadata.name' && e.operator === 'In') names.push(...(e.values || []));
+  }
+  if (names.length > 0) return Array.from(new Set(names)).sort().join(', ');
+  const labels = Object.entries(sel?.matchLabels || {}).map(([k, v]) => `${k}=${v}`);
+  return labels.length > 0 ? `(namespaces with ${labels.join(', ')})` : '(all namespaces)';
+}
+
+/**
  * Combine NADs and CUDNs into a unified inventory list.
  */
 export function listVlanInventory(
@@ -419,7 +436,7 @@ export function listVlanInventory(
     const localnet = cudn.spec?.network?.localnet || cudn.spec?.network?.localNet;
     items.push({
       name: cudn.metadata.name,
-      namespace: '(cluster)',
+      namespace: cudnNamespaces(cudn),
       type: 'cudn',
       vlanId: localnet?.vlan?.access?.id ?? localnet?.vlanID,
       physicalNetwork: localnet?.physicalNetworkName,
