@@ -67,7 +67,7 @@ Creates a CUDN with `topology: localnet` pointing at a `physicalNetworkName` dis
 Two axes in the catalog: git tag **`v1.x.x`** (semver) and optional branch **`ocp-X.Y`** when PatternFly or APIs diverge. Image tags **always** `<semver>-ocp<major.minor>` (e.g. `1.0.0-ocp4.22`). **Always publish both** OpenShift minor tags.
 
 - Git: `main` tracks the newest supported minor (currently **4.22**).
-- Images: `oct-network-vlan:1.1.2-ocp4.22` and `:1.1.0-ocp4.21`.
+- Images: `oct-network-vlan:1.1.2-ocp4.22` and `:1.1.2-ocp4.21`.
 - PatternFly 6 on 4.22; do not mix PF majors on one branch.
 
 ## Navigation (React Router v6 via v5-compat)
