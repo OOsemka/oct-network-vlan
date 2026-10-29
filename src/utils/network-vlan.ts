@@ -78,11 +78,24 @@ export type NetworkAttachmentDefinitionKind = {
     namespace: string;
     labels?: Record<string, string>;
     annotations?: Record<string, string>;
+    ownerReferences?: Array<{ kind?: string; name?: string }>;
   };
   spec?: {
     config?: string;
   };
 };
+
+/**
+ * NADs that OVN-Kubernetes generates for a (Cluster)UserDefinedNetwork in each
+ * selected namespace. OVN copies the network's labels onto them (including our
+ * managed-by label), but they are part of the CUDN, not separate networks.
+ */
+export function isUdnGeneratedNad(nad: NetworkAttachmentDefinitionKind): boolean {
+  if ((nad.metadata.ownerReferences || []).some((o) => o.kind === 'ClusterUserDefinedNetwork' || o.kind === 'UserDefinedNetwork')) {
+    return true;
+  }
+  return 'k8s.ovn.org/user-defined-network' in (nad.metadata.labels || {});
+}
 
 /** spec.network.localnet of a ClusterUserDefinedNetwork (k8s.ovn.org/v1). */
 export type CudnLocalNet = {
@@ -390,6 +403,7 @@ export function listVlanInventory(
   for (const nad of nads) {
     const labels = nad.metadata.labels || {};
     if (labels['app.kubernetes.io/managed-by'] !== MANAGED_BY_LABEL) continue;
+    if (isUdnGeneratedNad(nad)) continue;
     const cni = parseCniConfig(nad.spec?.config);
     items.push({
       name: nad.metadata.name,
