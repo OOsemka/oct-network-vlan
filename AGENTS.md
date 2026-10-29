@@ -9,12 +9,12 @@ Do not add Community Tools category nav here. Users open this page from the stor
 | | Value |
 | --- | --- |
 | Plugin ID / ConsolePlugin / `package.json` `consolePlugin.name` | **`oct-network-vlan`** |
-| Image | `quay.io/cjanisze/oct-network-vlan:1.1.3-ocp4.22` (`<semver>-ocp<major.minor>`) |
+| Image | `quay.io/cjanisze/oct-network-vlan:1.1.4-ocp4.22` (`<semver>-ocp<major.minor>`) |
 | i18n | `plugin__oct-network-vlan` |
 
 Display name is **Network VLAN**. No PVC or discovery sidecar.
 
-**Current version:** `1.1.3` (package.json / consolePlugin.version).
+**Current version:** `1.1.4` (package.json / consolePlugin.version).
 
 **CUDN (OVN localnet) shape** (`k8s.ovn.org/v1`): `spec.network.topology: Localnet` (capital L), `spec.network.localnet` (lower-case key) with `physicalNetworkName`, `role: Secondary` (the only allowed role), `vlan: {mode: Access, access: {id}}`, `subnets` as CIDR strings, and `ipam: {mode: Disabled}` when there are no subnets. Localnet has no gateway field: the form's gateway is reserved with `excludeSubnets: [<gw>/32]` (must be inside the subnet). Validate changes with `oc create --dry-run=server`.
 
@@ -67,7 +67,7 @@ Creates a CUDN with `topology: localnet` pointing at a `physicalNetworkName` dis
 Two axes in the catalog: git tag **`v1.x.x`** (semver) and optional branch **`ocp-X.Y`** when PatternFly or APIs diverge. Image tags **always** `<semver>-ocp<major.minor>` (e.g. `1.0.0-ocp4.22`). **Always publish both** OpenShift minor tags.
 
 - Git: `main` tracks the newest supported minor (currently **4.22**).
-- Images: `oct-network-vlan:1.1.3-ocp4.22` and `:1.1.3-ocp4.21`.
+- Images: `oct-network-vlan:1.1.4-ocp4.22` and `:1.1.4-ocp4.21`.
 - PatternFly 6 on 4.22; do not mix PF majors on one branch.
 
 ## Navigation (React Router v6 via v5-compat)
