@@ -41,7 +41,6 @@
   "Discovered from ovn.bridge-mappings in NodeNetworkConfigurationPolicies.": "Discovered from ovn.bridge-mappings in NodeNetworkConfigurationPolicies.",
   "VLAN ID (1–4094).": "VLAN ID (1–4094).",
   "MTU": "MTU",
-  "Maximum transmission unit (default 9000).": "Maximum transmission unit (default 9000).",
   "Role": "Role",
   "Secondary": "Secondary",
   "Primary": "Primary",
@@ -71,5 +70,11 @@
   "The NMState operator is not installed": "The NMState operator is not installed",
   "The operator is installed, but nodes are not reporting their interfaces. Finishing the setup creates the NMState instance if it is missing.": "The operator is installed, but nodes are not reporting their interfaces. Finishing the setup creates the NMState instance if it is missing.",
   "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click.": "This page reads and configures node interfaces with the Kubernetes NMState operator. Install it from redhat-operators with one click.",
-  "The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod.": "The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod."
+  "The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod.": "The gateway is on the physical network. Its address is reserved so OVN never assigns it to a VM or pod.",
+  "The uplink MTU of {{bridge}} is unknown, so 1500 is suggested.": "The uplink MTU of {{bridge}} is unknown, so 1500 is suggested.",
+  "The uplink of {{bridge}} runs at MTU {{limit}} on every node, so jumbo frames (9000) are suggested.": "The uplink of {{bridge}} runs at MTU {{limit}} on every node, so jumbo frames (9000) are suggested.",
+  "Jumbo frames are not available: the uplink of {{bridge}} runs at MTU {{limit}} on {{nodes}}.": "Jumbo frames are not available: the uplink of {{bridge}} runs at MTU {{limit}} on {{nodes}}.",
+  "Pods and VMs on this network use this MTU. Every device on the VLAN (switches, routers, other hosts) must support it too.": "Pods and VMs on this network use this MTU. Every device on the VLAN (switches, routers, other hosts) must support it too.",
+  "MTU must be a whole number from {{min}} to {{max}}.": "MTU must be a whole number from {{min}} to {{max}}.",
+  "MTU {{mtu}} is larger than the uplink MTU ({{limit}}); larger packets would be dropped. Use {{limit}} or less.": "MTU {{mtu}} is larger than the uplink MTU ({{limit}}); larger packets would be dropped. Use {{limit}} or less."
 }

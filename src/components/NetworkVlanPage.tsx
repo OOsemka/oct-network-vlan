@@ -69,7 +69,13 @@ import {
   NamespaceKind,
   buildLinuxBridgeNad,
   buildOvnCudn,
+  bridgeUplinkMtu,
   discoverLinuxBridges,
+  MTU_JUMBO,
+  MTU_MAX,
+  MTU_MIN,
+  mtuProblem,
+  suggestMtu,
   discoverOvnLocalnets,
   getK8sErrorMessage,
   isForbiddenError,
@@ -169,7 +175,8 @@ const NetworkVlanPage: FC = () => {
   const [targetNamespace, setTargetNamespace] = useState('');
   const [networkName, setNetworkName] = useState('');
   const [macspoofchk, setMacspoofchk] = useState(false);
-  const [mtu, setMtu] = useState(9000);
+  /** undefined: use the MTU suggested for the selected bridge/localnet. */
+  const [mtuOverride, setMtuOverride] = useState<number | undefined>(undefined);
   // Localnet networks are always secondary (the only role the API allows).
   const role = 'Secondary';
   const [subnetCidr, setSubnetCidr] = useState('');
@@ -190,6 +197,19 @@ const NetworkVlanPage: FC = () => {
     const suggested = suggestNetworkName(networkType, source, vlanId);
     setNetworkName(suggested);
   }, [networkType, selectedBridge, selectedLocalnet, vlanId]);
+
+  /* ---- MTU ---- */
+  const mtuBridge = networkType === 'linux-bridge'
+    ? selectedBridge
+    : ovnLocalnets.find((ln) => ln.localnetName === selectedLocalnet)?.bridgeName || '';
+  const uplinkMtu = useMemo(
+    () => (mtuBridge ? bridgeUplinkMtu(nns, mtuBridge) : { limit: undefined, lowNodes: [] as string[] }),
+    [nns, mtuBridge],
+  );
+  const suggestedMtu = suggestMtu(uplinkMtu.limit);
+  const mtu = mtuOverride ?? suggestedMtu;
+  const mtuIssue = mtuProblem(mtu, uplinkMtu.limit);
+  useEffect(() => setMtuOverride(undefined), [mtuBridge, networkType]);
 
   /* ---- Reset form fields when switching network type ---- */
   useEffect(() => {
@@ -219,6 +239,7 @@ const NetworkVlanPage: FC = () => {
           namespace: targetNamespace,
           bridgeName: selectedBridge,
           macspoofchk,
+          mtu,
         });
         dashboardLogger.info(
           LOG_ACTION,
@@ -335,8 +356,9 @@ const NetworkVlanPage: FC = () => {
       if (!selectedLocalnet) return false;
       if (!vlanId || vlanId < 1 || vlanId > 4094) return false;
     }
+    if (mtuIssue) return false;
     return true;
-  }, [networkType, networkName, targetNamespace, selectedBridge, selectedLocalnet, vlanId]);
+  }, [networkType, networkName, targetNamespace, selectedBridge, selectedLocalnet, vlanId, mtuIssue]);
 
   /* ---- Preview ---- */
   const previewContent = useMemo(() => {
@@ -347,6 +369,7 @@ const NetworkVlanPage: FC = () => {
         namespace: targetNamespace,
         bridgeName: selectedBridge,
         macspoofchk,
+        mtu,
       });
       return toYaml({
         apiVersion: nad.apiVersion,
@@ -718,26 +741,6 @@ const NetworkVlanPage: FC = () => {
                           </FormHelperText>
                         </FormGroup>
 
-                        <FormGroup label={t('MTU')} fieldId="netvlan-mtu">
-                          <NumberInput
-                            id="netvlan-mtu"
-                            value={mtu}
-                            min={576}
-                            max={9216}
-                            onChange={(e) => {
-                              const val = parseInt((e.target as HTMLInputElement).value, 10);
-                              setMtu(isNaN(val) ? 9000 : val);
-                            }}
-                            onMinus={() => setMtu(Math.max(576, mtu - 100))}
-                            onPlus={() => setMtu(Math.min(9216, mtu + 100))}
-                            widthChars={6}
-                          />
-                          <FormHelperText>
-                            <HelperText>
-                              <HelperTextItem>{t('Maximum transmission unit (default 9000).')}</HelperTextItem>
-                            </HelperText>
-                          </FormHelperText>
-                        </FormGroup>
 
                         <FormGroup label={t('Subnet CIDR (optional)')} fieldId="netvlan-subnet-cidr">
                           <TextInput
@@ -765,6 +768,55 @@ const NetworkVlanPage: FC = () => {
                         </FormGroup>
                       </>
                     )}
+
+                    {/* MTU (both network types) */}
+                    {mtuBridge && (
+                      <FormGroup label={t('MTU')} fieldId="netvlan-mtu">
+                        <NumberInput
+                          id="netvlan-mtu"
+                          value={mtu}
+                          min={MTU_MIN}
+                          max={MTU_MAX}
+                          onChange={(e) => {
+                            const val = parseInt((e.target as HTMLInputElement).value, 10);
+                            setMtuOverride(isNaN(val) ? undefined : val);
+                          }}
+                          onMinus={() => setMtuOverride(Math.max(MTU_MIN, mtu - 100))}
+                          onPlus={() => setMtuOverride(Math.min(MTU_MAX, mtu + 100))}
+                          widthChars={6}
+                        />
+                        <FormHelperText>
+                          <HelperText>
+                            {mtuIssue ? (
+                              <HelperTextItem variant="error">{t(mtuIssue.key, mtuIssue.values)}</HelperTextItem>
+                            ) : uplinkMtu.limit === undefined ? (
+                              <HelperTextItem>
+                                {t('The uplink MTU of {{bridge}} is unknown, so 1500 is suggested.', { bridge: mtuBridge })}
+                              </HelperTextItem>
+                            ) : uplinkMtu.limit >= MTU_JUMBO ? (
+                              <HelperTextItem>
+                                {t('The uplink of {{bridge}} runs at MTU {{limit}} on every node, so jumbo frames (9000) are suggested.', {
+                                  bridge: mtuBridge,
+                                  limit: String(uplinkMtu.limit),
+                                })}
+                              </HelperTextItem>
+                            ) : (
+                              <HelperTextItem variant="warning">
+                                {t('Jumbo frames are not available: the uplink of {{bridge}} runs at MTU {{limit}} on {{nodes}}.', {
+                                  bridge: mtuBridge,
+                                  limit: String(uplinkMtu.limit),
+                                  nodes: uplinkMtu.lowNodes.join(', '),
+                                })}
+                              </HelperTextItem>
+                            )}
+                            <HelperTextItem>
+                              {t('Pods and VMs on this network use this MTU. Every device on the VLAN (switches, routers, other hosts) must support it too.')}
+                            </HelperTextItem>
+                          </HelperText>
+                        </FormHelperText>
+                      </FormGroup>
+                    )}
+
 
                     {/* Common fields */}
                     <FormGroup label={t('Target Namespace')} fieldId="netvlan-namespace" isRequired>
@@ -875,21 +927,19 @@ const NetworkVlanPage: FC = () => {
                             </DescriptionListDescription>
                           </DescriptionListGroup>
                         )}
+                        <DescriptionListGroup>
+                          <DescriptionListTerm>{t('MTU')}</DescriptionListTerm>
+                          <DescriptionListDescription>
+                            {String(mtu)}
+                          </DescriptionListDescription>
+                        </DescriptionListGroup>
                         {networkType === 'ovn-localnet' && (
-                          <>
-                            <DescriptionListGroup>
-                              <DescriptionListTerm>{t('MTU')}</DescriptionListTerm>
-                              <DescriptionListDescription>
-                                {String(mtu)}
-                              </DescriptionListDescription>
-                            </DescriptionListGroup>
-                            <DescriptionListGroup>
-                              <DescriptionListTerm>{t('Role')}</DescriptionListTerm>
-                              <DescriptionListDescription>
-                                {role}
-                              </DescriptionListDescription>
-                            </DescriptionListGroup>
-                          </>
+                          <DescriptionListGroup>
+                            <DescriptionListTerm>{t('Role')}</DescriptionListTerm>
+                            <DescriptionListDescription>
+                              {role}
+                            </DescriptionListDescription>
+                          </DescriptionListGroup>
                         )}
                       </DescriptionList>
                     </StackItem>

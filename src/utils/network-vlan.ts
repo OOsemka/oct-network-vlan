@@ -270,6 +270,76 @@ export function discoverOvnLocalnets(nncps: NncpKind[]): OvnLocalnetInfo[] {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  MTU                                                                */
+/* ------------------------------------------------------------------ */
+
+export const MTU_MIN = 576;
+export const MTU_JUMBO = 9000;
+export const MTU_DEFAULT = 1500;
+export const MTU_MAX = 9216;
+
+const UPLINK_TYPES = new Set(['ethernet', 'bond', 'vlan']);
+
+function portName(p: { name?: string } | string): string | undefined {
+  return typeof p === 'string' ? p : p?.name;
+}
+
+/**
+ * Largest MTU a network on this bridge can use: the smallest MTU of the
+ * bridge's uplink ports (NICs, bonds, VLAN interfaces; not pod veths or OVS
+ * internal ports) on every node that has the bridge. undefined when unknown.
+ */
+export function bridgeUplinkMtu(
+  nnsList: NodeNetworkStateKind[],
+  bridgeName: string,
+): { limit?: number; lowNodes: string[] } {
+  const perNode: Array<{ node: string; mtu: number }> = [];
+  for (const nns of nnsList) {
+    const interfaces = nns.status?.currentState?.interfaces || [];
+    const bridge = interfaces.find(
+      (i) => i.name === bridgeName && ['linux-bridge', 'ovs-bridge'].includes((i.type || '').toLowerCase()),
+    );
+    if (!bridge) continue;
+    const ports = new Set((bridge.bridge?.port || []).map(portName).filter(Boolean));
+    const mtus = interfaces
+      .filter(
+        (i) =>
+          i.name && ports.has(i.name) && i.state !== 'ignore' &&
+          UPLINK_TYPES.has((i.type || '').toLowerCase()) && typeof i.mtu === 'number' && i.mtu > 0,
+      )
+      .map((i) => i.mtu as number);
+    if (mtus.length > 0) perNode.push({ node: nns.metadata.name, mtu: Math.min(...mtus) });
+  }
+  if (perNode.length === 0) return { limit: undefined, lowNodes: [] };
+  const limit = Math.min(...perNode.map((p) => p.mtu));
+  const lowNodes = limit < MTU_JUMBO ? perNode.filter((p) => p.mtu < MTU_JUMBO).map((p) => p.node).sort() : [];
+  return { limit, lowNodes };
+}
+
+/** 9000 (jumbo frames) when the uplink allows it on every node, else the uplink's MTU. */
+export function suggestMtu(limit?: number): number {
+  if (!limit) return MTU_DEFAULT;
+  return limit >= MTU_JUMBO ? MTU_JUMBO : limit;
+}
+
+/** Error text key (with values) when the MTU can't be used, else undefined. */
+export function mtuProblem(
+  mtu: number,
+  limit: number | undefined,
+): { key: string; values: Record<string, string> } | undefined {
+  if (!Number.isInteger(mtu) || mtu < MTU_MIN || mtu > MTU_MAX) {
+    return { key: 'MTU must be a whole number from {{min}} to {{max}}.', values: { min: String(MTU_MIN), max: String(MTU_MAX) } };
+  }
+  if (limit && mtu > limit) {
+    return {
+      key: 'MTU {{mtu}} is larger than the uplink MTU ({{limit}}); larger packets would be dropped. Use {{limit}} or less.',
+      values: { mtu: String(mtu), limit: String(limit) },
+    };
+  }
+  return undefined;
+}
+
 /**
  * Build a NetworkAttachmentDefinition for a Linux bridge VLAN.
  */
@@ -278,6 +348,8 @@ export function buildLinuxBridgeNad(opts: {
   namespace: string;
   bridgeName: string;
   macspoofchk: boolean;
+  /** MTU of the pod/VM interfaces. Without it they get 1500. */
+  mtu?: number;
   cniVersion?: string;
 }): NetworkAttachmentDefinitionKind {
   const cniVersion = opts.cniVersion || '0.3.1';
@@ -287,6 +359,7 @@ export function buildLinuxBridgeNad(opts: {
     type: 'bridge',
     bridge: opts.bridgeName,
     macspoofchk: opts.macspoofchk,
+    ...(opts.mtu && opts.mtu > 0 ? { mtu: opts.mtu } : {}),
   });
 
   return {
