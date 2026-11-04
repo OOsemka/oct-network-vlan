@@ -631,7 +631,7 @@ const NetworkVlanPage: FC = () => {
                                 <SelectOption
                                   key={br.name}
                                   value={br.name}
-                                  description={t('{{count}} nodes', { count: String(br.nodes.length) })}
+                                  description={t('{{count}} nodes', { count: br.nodes.length })}
                                 >
                                   {br.name}
                                 </SelectOption>
